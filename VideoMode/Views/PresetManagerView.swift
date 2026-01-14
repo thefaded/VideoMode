@@ -146,36 +146,46 @@ struct PresetDetailView: View {
             }
 
             Section("Size") {
-                HStack {
-                    TextField("Width", value: $preset.width, format: .number)
-                        .onChange(of: preset.width) { _ in onSave() }
-                    Text("x")
-                    TextField("Height", value: $preset.height, format: .number)
-                        .onChange(of: preset.height) { _ in onSave() }
+                Grid(alignment: .trailing, horizontalSpacing: 12, verticalSpacing: 12) {
+                    GridRow {
+                        Text("Width")
+                            .foregroundColor(.secondary)
+                        TextField("", value: $preset.width, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 100)
+                            .multilineTextAlignment(.trailing)
+                            .onChange(of: preset.width) { _ in onSave() }
+                    }
+                    GridRow {
+                        Text("Height")
+                            .foregroundColor(.secondary)
+                        TextField("", value: $preset.height, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 100)
+                            .multilineTextAlignment(.trailing)
+                            .onChange(of: preset.height) { _ in onSave() }
+                    }
                 }
+                .frame(maxWidth: .infinity)
 
                 HStack(spacing: 8) {
-                    Button("1920x1080") {
+                    Button("1920×1080") {
                         preset.width = 1920
                         preset.height = 1080
                         onSave()
                     }
-                    .buttonStyle(.bordered)
-
-                    Button("1280x720") {
+                    Button("1280×720") {
                         preset.width = 1280
                         preset.height = 720
                         onSave()
                     }
-                    .buttonStyle(.bordered)
-
-                    Button("1080x1920") {
+                    Button("1080×1920") {
                         preset.width = 1080
                         preset.height = 1920
                         onSave()
                     }
-                    .buttonStyle(.bordered)
                 }
+                .buttonStyle(.bordered)
             }
 
             Section("Placement") {
@@ -216,11 +226,10 @@ struct PresetDetailView: View {
 
             Section("Test") {
                 HStack {
-                    Button("Apply to Safari") {
-                        WindowController.shared.resizeWindow(browser: .safari, preset: preset)
-                    }
-                    Button("Apply to Chrome") {
-                        WindowController.shared.resizeWindow(browser: .chrome, preset: preset)
+                    ForEach(Browser.allCases, id: \.self) { browser in
+                        Button("Apply to \(browser.displayName)") {
+                            WindowController.shared.resizeWindow(browser: browser, preset: preset)
+                        }
                     }
                 }
             }
