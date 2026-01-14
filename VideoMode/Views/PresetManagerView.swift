@@ -3,7 +3,6 @@ import SwiftUI
 struct PresetManagerView: View {
     @ObservedObject var presetStore: PresetStore
     @State private var selectedPreset: WindowPreset?
-    @State private var isEditing = false
 
     var body: some View {
         HSplitView {
@@ -35,17 +34,16 @@ struct PresetManagerView: View {
                     Spacer()
 
                     Menu("Capture") {
-                        Button("From Safari") {
-                            captureWindow(browser: .safari)
-                        }
-                        Button("From Chrome") {
-                            captureWindow(browser: .chrome)
+                        ForEach(Browser.allCases, id: \.self) { browser in
+                            Button("From \(browser.displayName)") {
+                                captureWindow(browser: browser)
+                            }
                         }
                     }
                 }
                 .padding(8)
             }
-            .frame(minWidth: 200)
+            .frame(minWidth: 220)
 
             // Detail view
             if let preset = selectedPreset {
@@ -55,14 +53,14 @@ struct PresetManagerView: View {
                         presetStore.save()
                     }
                 )
-                .frame(minWidth: 300)
+                .frame(minWidth: 320)
             } else {
                 Text("Select a preset to edit")
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(minWidth: 550, minHeight: 350)
+        .frame(minWidth: 600, minHeight: 400)
     }
 
     private func binding(for preset: WindowPreset) -> Binding<WindowPreset> {
@@ -77,8 +75,7 @@ struct PresetManagerView: View {
             name: "New Preset",
             width: 1920,
             height: 1080,
-            x: 100,
-            y: 100
+            placement: .center
         )
         presetStore.addPreset(newPreset)
         selectedPreset = newPreset
@@ -100,8 +97,9 @@ struct PresetManagerView: View {
             name: "Captured \(browser.displayName)",
             width: frame.width,
             height: frame.height,
-            x: frame.x,
-            y: frame.y
+            placement: .custom,
+            customX: frame.x,
+            customY: frame.y
         )
         presetStore.addPreset(newPreset)
         selectedPreset = newPreset
@@ -117,7 +115,7 @@ struct PresetRowView: View {
             VStack(alignment: .leading) {
                 Text(preset.name)
                     .fontWeight(.medium)
-                Text("\(preset.sizeDescription) at \(preset.positionDescription)")
+                Text("\(preset.sizeDescription) • \(preset.placementDescription)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -180,30 +178,39 @@ struct PresetDetailView: View {
                 }
             }
 
-            Section("Position") {
-                HStack {
-                    TextField("X", value: $preset.x, format: .number)
-                        .onChange(of: preset.x) { _ in onSave() }
-                    TextField("Y", value: $preset.y, format: .number)
-                        .onChange(of: preset.y) { _ in onSave() }
+            Section("Placement") {
+                Picker("Position", selection: $preset.placement) {
+                    Text("Center").tag(WindowPlacement.center)
+                    Divider()
+                    Text("Left Half").tag(WindowPlacement.leftHalf)
+                    Text("Right Half").tag(WindowPlacement.rightHalf)
+                    Text("Top Half").tag(WindowPlacement.topHalf)
+                    Text("Bottom Half").tag(WindowPlacement.bottomHalf)
+                    Divider()
+                    Text("Top Left").tag(WindowPlacement.topLeft)
+                    Text("Top Right").tag(WindowPlacement.topRight)
+                    Text("Bottom Left").tag(WindowPlacement.bottomLeft)
+                    Text("Bottom Right").tag(WindowPlacement.bottomRight)
+                    Divider()
+                    Text("Almost Maximize").tag(WindowPlacement.almostMaximize)
+                    Text("Custom Position").tag(WindowPlacement.custom)
                 }
+                .onChange(of: preset.placement) { _ in onSave() }
 
-                HStack(spacing: 8) {
-                    Button("Top Left") {
-                        preset.x = 0
-                        preset.y = 25 // Below menu bar
-                        onSave()
-                    }
-                    .buttonStyle(.bordered)
+                if preset.placement == .custom {
+                    HStack {
+                        TextField("X", value: Binding(
+                            get: { preset.customX ?? 0 },
+                            set: { preset.customX = $0 }
+                        ), format: .number)
+                        .onChange(of: preset.customX) { _ in onSave() }
 
-                    Button("Center") {
-                        if let screen = NSScreen.main {
-                            preset.x = Int((screen.frame.width - CGFloat(preset.width)) / 2)
-                            preset.y = Int((screen.frame.height - CGFloat(preset.height)) / 2)
-                            onSave()
-                        }
+                        TextField("Y", value: Binding(
+                            get: { preset.customY ?? 0 },
+                            set: { preset.customY = $0 }
+                        ), format: .number)
+                        .onChange(of: preset.customY) { _ in onSave() }
                     }
-                    .buttonStyle(.bordered)
                 }
             }
 

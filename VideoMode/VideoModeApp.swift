@@ -31,29 +31,17 @@ struct MenuBarContentView: View {
 
     var body: some View {
         Group {
-            // Safari submenu
-            Menu("Safari") {
-                ForEach(Array(presetStore.presets.enumerated()), id: \.element.id) { index, preset in
-                    Button {
-                        WindowController.shared.resizeWindow(browser: .safari, preset: preset)
-                    } label: {
-                        Text("\(preset.name) (\(preset.sizeDescription))")
-                        if index < 9 {
-                            Text(HotkeyManager.shortcutString(for: index))
-                        }
-                    }
-                }
-            }
-
-            // Chrome submenu
-            Menu("Chrome") {
-                ForEach(Array(presetStore.presets.enumerated()), id: \.element.id) { index, preset in
-                    Button {
-                        WindowController.shared.resizeWindow(browser: .chrome, preset: preset)
-                    } label: {
-                        Text("\(preset.name) (\(preset.sizeDescription))")
-                        if index < 9 {
-                            Text(HotkeyManager.shortcutString(for: index))
+            // Browser submenus
+            ForEach(Browser.allCases, id: \.self) { browser in
+                Menu(browser.displayName) {
+                    ForEach(Array(presetStore.presets.enumerated()), id: \.element.id) { index, preset in
+                        Button {
+                            WindowController.shared.resizeWindow(browser: browser, preset: preset)
+                        } label: {
+                            Text("\(preset.name) (\(preset.sizeDescription), \(preset.placementDescription))")
+                            if index < 9 {
+                                Text(HotkeyManager.shortcutString(for: index))
+                            }
                         }
                     }
                 }
@@ -61,13 +49,57 @@ struct MenuBarContentView: View {
 
             Divider()
 
+            // Quick Place submenu
+            Menu("Quick Place") {
+                Button("Center") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .center)
+                }
+
+                Divider()
+
+                Button("Left Half") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .leftHalf)
+                }
+                Button("Right Half") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .rightHalf)
+                }
+                Button("Top Half") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .topHalf)
+                }
+                Button("Bottom Half") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .bottomHalf)
+                }
+
+                Divider()
+
+                Button("Top Left") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .topLeft)
+                }
+                Button("Top Right") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .topRight)
+                }
+                Button("Bottom Left") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .bottomLeft)
+                }
+                Button("Bottom Right") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .bottomRight)
+                }
+
+                Divider()
+
+                Button("Almost Maximize") {
+                    WindowController.shared.quickPlaceFrontmostBrowser(placement: .almostMaximize)
+                }
+            }
+
+            Divider()
+
             // Save current window
             Menu("Save Current Window") {
-                Button("From Safari") {
-                    saveCurrentWindow(browser: .safari)
-                }
-                Button("From Chrome") {
-                    saveCurrentWindow(browser: .chrome)
+                ForEach(Browser.allCases, id: \.self) { browser in
+                    Button("From \(browser.displayName)") {
+                        saveCurrentWindow(browser: browser)
+                    }
                 }
             }
 
@@ -99,8 +131,9 @@ struct MenuBarContentView: View {
             name: "New Preset",
             width: frame.width,
             height: frame.height,
-            x: frame.x,
-            y: frame.y
+            placement: .custom,
+            customX: frame.x,
+            customY: frame.y
         )
 
         presetStore.addPreset(preset)

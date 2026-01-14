@@ -58,8 +58,14 @@ class PresetStore: ObservableObject {
 
     private func defaultPresets() -> [WindowPreset] {
         [
-            WindowPreset(name: "Full HD", width: 1920, height: 1080, x: 100, y: 100),
-            WindowPreset(name: "HD 720p", width: 1280, height: 720, x: 100, y: 100)
+            WindowPreset(name: "Full HD", width: 1920, height: 1080, placement: .center),
+            WindowPreset(name: "HD 720p", width: 1280, height: 720, placement: .center)
         ]
+    }
+
+    func resetToDefaults() {
+        UserDefaults.standard.removeObject(forKey: storageKey)
+        presets = defaultPresets()
+        save()
     }
 }

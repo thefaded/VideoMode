@@ -4,11 +4,13 @@ import Foundation
 enum Browser: String, CaseIterable {
     case safari = "Safari"
     case chrome = "Google Chrome"
+    case brave = "Brave Browser"
 
     var displayName: String {
         switch self {
         case .safari: return "Safari"
         case .chrome: return "Chrome"
+        case .brave: return "Brave"
         }
     }
 }
@@ -19,26 +21,9 @@ class WindowController {
     private init() {}
 
     func resizeWindow(browser: Browser, preset: WindowPreset) {
-        let script: String
-        switch browser {
-        case .safari:
-            script = """
-            tell application "Safari"
-                if (count of windows) > 0 then
-                    set bounds of front window to {\(preset.x), \(preset.y), \(preset.x + preset.width), \(preset.y + preset.height)}
-                end if
-            end tell
-            """
-        case .chrome:
-            script = """
-            tell application "Google Chrome"
-                if (count of windows) > 0 then
-                    set bounds of front window to {\(preset.x), \(preset.y), \(preset.x + preset.width), \(preset.y + preset.height)}
-                end if
-            end tell
-            """
-        }
-        runAppleScript(script)
+        let frame = preset.calculateFrame()
+        resizeWindowToFrame(browser: browser, x: frame.x, y: frame.y, width: frame.width, height: frame.height)
+        activateBrowser(browser)
     }
 
     func resizeFrontmostBrowser(preset: WindowPreset) {
@@ -47,28 +32,44 @@ class WindowController {
         }
     }
 
-    func getCurrentWindowFrame(browser: Browser) -> (width: Int, height: Int, x: Int, y: Int)? {
-        let script: String
-        switch browser {
-        case .safari:
-            script = """
-            tell application "Safari"
-                if (count of windows) > 0 then
-                    set windowBounds to bounds of front window
-                    return windowBounds
-                end if
-            end tell
-            """
-        case .chrome:
-            script = """
-            tell application "Google Chrome"
-                if (count of windows) > 0 then
-                    set windowBounds to bounds of front window
-                    return windowBounds
-                end if
-            end tell
-            """
+    func quickPlace(browser: Browser, placement: WindowPlacement) {
+        // Get current window size first
+        guard let currentFrame = getCurrentWindowFrame(browser: browser) else { return }
+        let frame = placement.calculatePosition(windowWidth: currentFrame.width, windowHeight: currentFrame.height)
+        resizeWindowToFrame(browser: browser, x: frame.x, y: frame.y, width: frame.width, height: frame.height)
+        activateBrowser(browser)
+    }
+
+    func quickPlaceFrontmostBrowser(placement: WindowPlacement) {
+        // Try browsers in order (menu bar click makes VideoMode frontmost)
+        for browser in Browser.allCases {
+            if getCurrentWindowFrame(browser: browser) != nil {
+                quickPlace(browser: browser, placement: placement)
+                return
+            }
         }
+    }
+
+    private func resizeWindowToFrame(browser: Browser, x: Int, y: Int, width: Int, height: Int) {
+        let script = """
+        tell application "\(browser.rawValue)"
+            if (count of windows) > 0 then
+                set bounds of front window to {\(x), \(y), \(x + width), \(y + height)}
+            end if
+        end tell
+        """
+        runAppleScript(script)
+    }
+
+    func getCurrentWindowFrame(browser: Browser) -> (width: Int, height: Int, x: Int, y: Int)? {
+        let script = """
+        tell application "\(browser.rawValue)"
+            if (count of windows) > 0 then
+                set windowBounds to bounds of front window
+                return windowBounds
+            end if
+        end tell
+        """
 
         guard let result = runAppleScriptWithResult(script) else { return nil }
 
@@ -128,6 +129,17 @@ class WindowController {
         if let error = error {
             print("AppleScript error: \(error)")
             return nil
+        }
+
+        // For list results, stringValue is nil - need to build string from list items
+        if result.numberOfItems > 0 {
+            var components: [String] = []
+            for i in 1...result.numberOfItems {
+                if let item = result.atIndex(i) {
+                    components.append(String(item.int32Value))
+                }
+            }
+            return components.joined(separator: ", ")
         }
 
         return result.stringValue
