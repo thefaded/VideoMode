@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 import Foundation
 
 enum Browser: String, CaseIterable {
@@ -41,13 +42,42 @@ class WindowController {
     }
 
     func quickPlaceFrontmostBrowser(placement: WindowPlacement) {
-        // Try browsers in order (menu bar click makes VideoMode frontmost)
-        for browser in Browser.allCases {
-            if getCurrentWindowFrame(browser: browser) != nil {
-                quickPlace(browser: browser, placement: placement)
-                return
+        // Find the most recently used browser by window order
+        if let browser = getMostRecentBrowser() {
+            quickPlace(browser: browser, placement: placement)
+        }
+    }
+
+    private func getMostRecentBrowser() -> Browser? {
+        // Get windows in front-to-back order (most recent first)
+        guard let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            return nil
+        }
+
+        let browserBundleIds: [String: Browser] = [
+            "com.apple.Safari": .safari,
+            "com.google.Chrome": .chrome,
+            "com.brave.Browser": .brave
+        ]
+
+        // Find the first window belonging to a supported browser
+        for window in windowList {
+            guard let pid = window[kCGWindowOwnerPID as String] as? Int32 else {
+                continue
+            }
+
+            // Get bundle identifier from PID
+            if let app = NSRunningApplication(processIdentifier: pid),
+               let bundleId = app.bundleIdentifier,
+               let browser = browserBundleIds[bundleId] {
+                // Verify it has an open window we can control
+                if getCurrentWindowFrame(browser: browser) != nil {
+                    return browser
+                }
             }
         }
+
+        return nil
     }
 
     private func resizeWindowToFrame(browser: Browser, x: Int, y: Int, width: Int, height: Int) {
@@ -97,6 +127,8 @@ class WindowController {
             return .safari
         case "com.google.Chrome":
             return .chrome
+        case "com.brave.Browser":
+            return .brave
         default:
             return nil
         }
